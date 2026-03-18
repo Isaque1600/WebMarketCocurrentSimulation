@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id       Int    @id
+  name     String
+  email    String @unique
+  password String
+}
+
+model Product {
+  id            Int     @id
+  name          String
+  description   String
+  price         Decimal
+  stockQuantity Int
+}
+
+enum PaymentStatus {
+  PENDING
+  DENIED
+  ACCEPTED
+}
+
+model Order {
+  id               Int           @id
+  userId           Int
+  total            Decimal
+  paymentStatus    PaymentStatus
+  paymentGetawayId String?
+  createdAt        DateTime      @default(now())
+}
+
+model OrderItem {
+  id        Int     @id
+  orderId   Int
+  productId Int
+  quantity  Int
+  price     Decimal
+  unitPrice Decimal
+}
