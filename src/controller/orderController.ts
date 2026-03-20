@@ -1,7 +1,32 @@
-// controllers/orderController.ts
+import { Router } from "express";
+import { OrderService } from "db/order.js";
+import { PaymentStatus } from "db/mockDatabase.js";
 
 import { Request, Response, NextFunction } from "express";
 import { mockDB } from "../mockDatabase";
+
+export const orderRouter = Router();
+
+orderRouter.put("/orders/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  if (await OrderService.getOrderById(parseInt(id)) == undefined){
+    return res.status(404).json({
+      error: "Order not found",
+    });
+  }
+
+  if (!paymentStatus || !Object.values(PaymentStatus).includes(paymentStatus)) {
+    return res.status(400).json({
+      error: "Invalid paymentStatus. Use: PENDING, DENIED or ACCEPTED",
+    });
+  }
+
+  const updatedOrder = await OrderService.updateOrderStatus(parseInt(id), paymentStatus);
+
+  return res.json(updatedOrder);
+});
 
 export const createOrder = (
   req: Request,
