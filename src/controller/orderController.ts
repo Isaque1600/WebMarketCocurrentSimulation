@@ -1,7 +1,9 @@
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../utils/prisma";
+// controllers/orderController.ts
 
-export const createOrder = async (
+import { Request, Response, NextFunction } from "express";
+import { mockDB } from "../mockDatabase";
+
+export const createOrder = (
   req: Request,
   res: Response,
   next: NextFunction
@@ -9,31 +11,32 @@ export const createOrder = async (
   try {
     const { userId, items } = req.body;
 
-    if (!userId || !items || !Array.isArray(items)) {
+    if (!userId || !Array.isArray(items)) {
       return res.status(400).json({ error: "Invalid request body" });
     }
 
-    // Buscar produtos no banco
-    const productIds = items.map((item: any) => item.productId);
-
-    const products = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
-      },
-    });
-
-    // Mapear produtos por ID
-    const productMap = new Map(
-      products.map((product) => [product.id, product])
-    );
-
     let total = 0;
 
-    const orderItemsData = items.map((item: any) => {
-      const product = productMap.get(item.productId);
+    // Criar ID do pedido
+    const orderId = mockDB.orders.length + 1;
+
+    const newOrderItems = [];
+
+    for (const item of items) {
+      const product = mockDB.products.find(
+        (p) => p.id === item.productId
+      );
 
       if (!product) {
-        throw new Error(`Product ${item.productId} not found`);
+        return res
+          .status(404)
+          .json({ error: `Product ${item.productId} not found` });
+      }
+
+      if (product.stockQuantity < item.quantity) {
+        return res
+          .status(400)
+          .json({ error: `Insufficient stock for product ${product.id}` });
       }
 
       const unitPrice = product.price;
@@ -41,30 +44,40 @@ export const createOrder = async (
 
       total += price;
 
-      return {
+      // Criar ID do OrderItem
+      const orderItemId = mockDB.orderItems.length + newOrderItems.length + 1;
+
+      const orderItem = {
+        id: orderItemId,
+        orderId: orderId,
         productId: product.id,
         quantity: item.quantity,
         unitPrice,
         price,
       };
-    });
 
-    // Criar pedido + itens (transação)
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        total,
-        paymentStatus: "PENDING", // ajuste conforme seu enum
-        orderItems: {
-          create: orderItemsData,
-        },
-      },
-      include: {
-        orderItems: true,
-      },
-    });
+      newOrderItems.push(orderItem);
 
-    return res.status(201).json(order);
+      // Atualizar estoque
+      product.stockQuantity -= item.quantity;
+    }
+
+    const newOrder = {
+      id: orderId,
+      userId,
+      total,
+      paymentStatus: "PENDING",
+      createdAt: new Date(),
+    };
+
+    // Persistir no "banco"
+    mockDB.orders.push(newOrder);
+    mockDB.orderItems.push(...newOrderItems);
+
+    return res.status(201).json({
+      order: newOrder,
+      items: newOrderItems,
+    });
   } catch (error) {
     next(error);
   }
