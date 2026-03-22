@@ -1,66 +1,62 @@
 import { mockDB } from "./index.js";
-import type { Order, OrderItem, PaymentStatus } from "./mockDatabase.js";
+import type { Order, OrderItem } from "./mockDatabase.js";
+import { PaymentStatus } from "./mockDatabase.js";
 
-// Order service functions using the mock database
 export class OrderService {
-  static getAllOrders(): Order[] {
-    return mockDB.getAllOrders();
+  static async getOrderById(id: number): Promise<Order | undefined> {
+    return await mockDB.getOrderById(id);
   }
 
-  static getOrderById(id: number): Order | undefined {
-    return mockDB.getOrderById(id);
+  static async createOrder(
+    orderData: Omit<Order, "id" | "createdAt">,
+  ): Promise<Order> {
+    return await mockDB.createOrder(orderData);
   }
 
-  static getOrdersByUserId(userId: number): Order[] {
-    return mockDB.getOrdersByUserId(userId);
-  }
-
-  static createOrder(orderData: Omit<Order, "id" | "createdAt">): Order {
-    return mockDB.createOrder(orderData);
-  }
-
-  static updateOrder(
-    id: number,
-    orderData: Partial<Omit<Order, "id" | "createdAt">>,
-  ): Order | undefined {
-    return mockDB.updateOrder(id, orderData);
-  }
-
-  static updateOrderStatus(
+  static async updateOrderStatus(
     id: number,
     status: PaymentStatus,
-  ): Order | undefined {
-    return mockDB.updateOrderStatus(id, status);
+  ): Promise<Order | undefined> {
+    return await mockDB.updateOrderStatus(id, status);
   }
 
-  static deleteOrder(id: number): boolean {
-    return mockDB.deleteOrder(id);
-  }
-
-  static getOrderWithItems(
+  static async getOrderWithItems(
     orderId: number,
-  ): { order: Order; items: OrderItem[] } | undefined {
-    return mockDB.getOrderWithItems(orderId);
+  ): Promise<{ order: Order; items: OrderItem[] } | undefined> {
+    return await mockDB.getOrderWithItems(orderId);
   }
 
-  static calculateOrderTotal(orderId: number): number {
-    return mockDB.calculateOrderTotal(orderId);
-  }
-
-  static createOrderWithItems(
+  static async createOrderWithItems(
     orderData: Omit<Order, "id" | "createdAt" | "total">,
     items: Array<Omit<OrderItem, "id" | "orderId">>,
-  ): { order: Order; items: OrderItem[] } {
-    // Calculate total from items
+  ): Promise<{ order: Order; items: OrderItem[] }> {
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
-    // Create the order
-    const order = mockDB.createOrder({ ...orderData, total });
+    const order = await mockDB.createOrder({ ...orderData, total });
 
-    // Create order items
-    const orderItems = items.map((item) =>
-      mockDB.createOrderItem({ ...item, orderId: order.id }),
-    );
+    const orderItems = [];
+    for (const item of items) {
+      const product = await mockDB.getProductById(item.productId);
+
+      if (!product) {
+        throw new Error(`Product with id ${item.productId} not found`);
+      }
+
+      if (product.stockQuantity < item.quantity) {
+        throw new Error(`Insufficient stock for product ${product.name}`);
+      }
+
+      const orderItem = await mockDB.createOrderItem({
+        ...item,
+        orderId: order.id,
+        unitPrice: product.price,
+        price: product.price * item.quantity,
+      });
+
+      orderItems.push(orderItem);
+
+      await mockDB.updateProductStock(item.productId, -item.quantity);
+    }
 
     return { order, items: orderItems };
   }

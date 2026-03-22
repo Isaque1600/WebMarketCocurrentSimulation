@@ -38,7 +38,11 @@ export interface OrderItem {
   unitPrice: number;
 }
 
-// Mock Database Class
+function simulateDbDelay(): Promise<void> {
+  const delay = Math.floor(Math.random() * 250) + 50;
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
 export class MockDatabase {
   private users: Map<number, User> = new Map();
   private products: Map<number, Product> = new Map();
@@ -50,7 +54,12 @@ export class MockDatabase {
   private nextOrderId = 1;
   private nextOrderItemId = 1;
 
-  createUser(userData: Omit<User, "id">): User {
+  constructor() {
+    this.seedData();
+  }
+
+  async createUser(userData: Omit<User, "id">): Promise<User> {
+    await simulateDbDelay();
     const user: User = {
       id: this.nextUserId++,
       ...userData,
@@ -59,22 +68,26 @@ export class MockDatabase {
     return user;
   }
 
-  getUserById(id: number): User | undefined {
+  async getUserById(id: number): Promise<User | undefined> {
+    await simulateDbDelay();
     return this.users.get(id);
   }
 
-  getUserByEmail(email: string): User | undefined {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    await simulateDbDelay();
     return Array.from(this.users.values()).find((user) => user.email === email);
   }
 
-  getAllUsers(): User[] {
+  async getAllUsers(): Promise<User[]> {
+    await simulateDbDelay();
     return Array.from(this.users.values());
   }
 
-  updateUser(
+  async updateUser(
     id: number,
     userData: Partial<Omit<User, "id">>,
-  ): User | undefined {
+  ): Promise<User | undefined> {
+    await simulateDbDelay();
     const user = this.users.get(id);
     if (!user) return undefined;
 
@@ -83,12 +96,13 @@ export class MockDatabase {
     return updatedUser;
   }
 
-  deleteUser(id: number): boolean {
+  async deleteUser(id: number): Promise<boolean> {
+    await simulateDbDelay();
     return this.users.delete(id);
   }
 
-  // Product methods
-  createProduct(productData: Omit<Product, "id">): Product {
+  async createProduct(productData: Omit<Product, "id">): Promise<Product> {
+    await simulateDbDelay();
     const product: Product = {
       id: this.nextProductId++,
       ...productData,
@@ -97,24 +111,28 @@ export class MockDatabase {
     return product;
   }
 
-  getProductById(id: number): Product | undefined {
+  async getProductById(id: number): Promise<Product | undefined> {
+    await simulateDbDelay();
     return this.products.get(id);
   }
 
-  getAllProducts(): Product[] {
+  async getAllProducts(): Promise<Product[]> {
+    await simulateDbDelay();
     return Array.from(this.products.values());
   }
 
-  getProductsByName(name: string): Product[] {
+  async getProductsByName(name: string): Promise<Product[]> {
+    await simulateDbDelay();
     return Array.from(this.products.values()).filter((product) =>
       product.name.toLowerCase().includes(name.toLowerCase()),
     );
   }
 
-  updateProduct(
+  async updateProduct(
     id: number,
     productData: Partial<Omit<Product, "id">>,
-  ): Product | undefined {
+  ): Promise<Product | undefined> {
+    await simulateDbDelay();
     const product = this.products.get(id);
     if (!product) return undefined;
 
@@ -123,21 +141,28 @@ export class MockDatabase {
     return updatedProduct;
   }
 
-  updateProductStock(id: number, quantity: number): Product | undefined {
+  async updateProductStock(
+    id: number,
+    quantity: number,
+  ): Promise<Product | undefined> {
+    await simulateDbDelay();
     const product = this.products.get(id);
-    if (!product || product.stockQuantity < quantity) return undefined;
+    if (!product) return undefined;
 
-    product.stockQuantity -= quantity;
+    product.stockQuantity += quantity;
     this.products.set(id, product);
     return product;
   }
 
-  deleteProduct(id: number): boolean {
+  async deleteProduct(id: number): Promise<boolean> {
+    await simulateDbDelay();
     return this.products.delete(id);
   }
 
-  // Order methods
-  createOrder(orderData: Omit<Order, "id" | "createdAt">): Order {
+  async createOrder(
+    orderData: Omit<Order, "id" | "createdAt">,
+  ): Promise<Order> {
+    await simulateDbDelay();
     const order: Order = {
       id: this.nextOrderId++,
       createdAt: new Date(),
@@ -147,24 +172,28 @@ export class MockDatabase {
     return order;
   }
 
-  getOrderById(id: number): Order | undefined {
+  async getOrderById(id: number): Promise<Order | undefined> {
+    await simulateDbDelay();
     return this.orders.get(id);
   }
 
-  getOrdersByUserId(userId: number): Order[] {
+  async getOrdersByUserId(userId: number): Promise<Order[]> {
+    await simulateDbDelay();
     return Array.from(this.orders.values()).filter(
       (order) => order.userId === userId,
     );
   }
 
-  getAllOrders(): Order[] {
+  async getAllOrders(): Promise<Order[]> {
+    await simulateDbDelay();
     return Array.from(this.orders.values());
   }
 
-  updateOrderStatus(
+  async updateOrderStatus(
     id: number,
     paymentStatus: PaymentStatus,
-  ): Order | undefined {
+  ): Promise<Order | undefined> {
+    await simulateDbDelay();
     const order = this.orders.get(id);
     if (!order) return undefined;
 
@@ -173,10 +202,11 @@ export class MockDatabase {
     return order;
   }
 
-  updateOrder(
+  async updateOrder(
     id: number,
     orderData: Partial<Omit<Order, "id" | "createdAt">>,
-  ): Order | undefined {
+  ): Promise<Order | undefined> {
+    await simulateDbDelay();
     const order = this.orders.get(id);
     if (!order) return undefined;
 
@@ -185,16 +215,20 @@ export class MockDatabase {
     return updatedOrder;
   }
 
-  deleteOrder(id: number): boolean {
-    // Also delete related order items
-    const orderItems = this.getOrderItemsByOrderId(id);
-    orderItems.forEach((item) => this.deleteOrderItem(item.id));
+  async deleteOrder(id: number): Promise<boolean> {
+    await simulateDbDelay();
+    const orderItems = await this.getOrderItemsByOrderId(id);
+    for (const item of orderItems) {
+      await this.deleteOrderItem(item.id);
+    }
 
     return this.orders.delete(id);
   }
 
-  // OrderItem methods
-  createOrderItem(orderItemData: Omit<OrderItem, "id">): OrderItem {
+  async createOrderItem(
+    orderItemData: Omit<OrderItem, "id">,
+  ): Promise<OrderItem> {
+    await simulateDbDelay();
     const orderItem: OrderItem = {
       id: this.nextOrderItemId++,
       ...orderItemData,
@@ -203,24 +237,28 @@ export class MockDatabase {
     return orderItem;
   }
 
-  getOrderItemById(id: number): OrderItem | undefined {
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    await simulateDbDelay();
     return this.orderItems.get(id);
   }
 
-  getOrderItemsByOrderId(orderId: number): OrderItem[] {
+  async getOrderItemsByOrderId(orderId: number): Promise<OrderItem[]> {
+    await simulateDbDelay();
     return Array.from(this.orderItems.values()).filter(
       (item) => item.orderId === orderId,
     );
   }
 
-  getAllOrderItems(): OrderItem[] {
+  async getAllOrderItems(): Promise<OrderItem[]> {
+    await simulateDbDelay();
     return Array.from(this.orderItems.values());
   }
 
-  updateOrderItem(
+  async updateOrderItem(
     id: number,
     itemData: Partial<Omit<OrderItem, "id">>,
-  ): OrderItem | undefined {
+  ): Promise<OrderItem | undefined> {
+    await simulateDbDelay();
     const orderItem = this.orderItems.get(id);
     if (!orderItem) return undefined;
 
@@ -229,37 +267,82 @@ export class MockDatabase {
     return updatedOrderItem;
   }
 
-  deleteOrderItem(id: number): boolean {
+  async deleteOrderItem(id: number): Promise<boolean> {
+    await simulateDbDelay();
     return this.orderItems.delete(id);
   }
 
-  // Business logic methods
-  getOrderWithItems(
+  async getOrderWithItems(
     orderId: number,
-  ): { order: Order; items: OrderItem[] } | undefined {
-    const order = this.getOrderById(orderId);
+  ): Promise<{ order: Order; items: OrderItem[] } | undefined> {
+    const order = await this.getOrderById(orderId);
     if (!order) return undefined;
 
-    const items = this.getOrderItemsByOrderId(orderId);
+    const items = await this.getOrderItemsByOrderId(orderId);
     return { order, items };
   }
 
-  calculateOrderTotal(orderId: number): number {
-    const items = this.getOrderItemsByOrderId(orderId);
+  async calculateOrderTotal(orderId: number): Promise<number> {
+    const items = await this.getOrderItemsByOrderId(orderId);
     return items.reduce((total, item) => total + item.price, 0);
   }
 
-  getStats(): {
+  async getStats(): Promise<{
     usersCount: number;
     productsCount: number;
     ordersCount: number;
     orderItemsCount: number;
-  } {
+  }> {
+    await simulateDbDelay();
     return {
       usersCount: this.users.size,
       productsCount: this.products.size,
       ordersCount: this.orders.size,
       orderItemsCount: this.orderItems.size,
     };
+  }
+
+  async reset(): Promise<void> {
+    await simulateDbDelay();
+    this.users.clear();
+    this.products.clear();
+    this.orders.clear();
+    this.orderItems.clear();
+
+    this.nextUserId = 1;
+    this.nextProductId = 1;
+    this.nextOrderId = 1;
+    this.nextOrderItemId = 1;
+
+    this.seedData();
+  }
+
+  private seedData(): void {
+    this.users.set(1, {
+      id: 1,
+      name: "Abdon Werner",
+      email: "abaddon@example.com",
+      password: "hashed_password_1",
+    });
+
+    this.users.set(2, {
+      id: 2,
+      name: "Raimundo Nonato",
+      email: "raimundo@example.com",
+      password: "hashed_password_2",
+    });
+
+    this.products.set(1, {
+      id: 1,
+      name: "Wireless Mouse",
+      description: "Ergonomic wireless mouse with precision tracking",
+      price: 39.99,
+      stockQuantity: 1,
+    });
+
+    this.nextUserId = 3;
+    this.nextProductId = 2;
+    this.nextOrderId = 1;
+    this.nextOrderItemId = 1;
   }
 }

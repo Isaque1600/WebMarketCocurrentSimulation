@@ -9,7 +9,7 @@
       ]
     },
     "module": "nodenext",
-    "target": "esnext",
+    "target": "es2024",
     "types": [
       "node"
     ],
