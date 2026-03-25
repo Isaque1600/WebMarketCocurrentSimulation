@@ -163,6 +163,7 @@ export class MockDatabase {
     orderData: Omit<Order, "id" | "createdAt">,
   ): Promise<Order> {
     await simulateDbDelay();
+
     const order: Order = {
       id: this.nextOrderId++,
       createdAt: new Date(),
@@ -332,6 +333,20 @@ export class MockDatabase {
       password: "hashed_password_2",
     });
 
+    this.users.set(3, {
+      id: 3,
+      name: "Enrique",
+      email: "enriquewanderley@example.com",
+      password: "hashed_password_3",
+    });
+
+    this.users.set(4, {
+      id: 4,
+      name: "Tarcisio Nareba",
+      email: "nareba@example.com",
+      password: "hashed_password_4",
+    });
+
     this.products.set(1, {
       id: 1,
       name: "Wireless Mouse",
@@ -340,8 +355,16 @@ export class MockDatabase {
       stockQuantity: 1,
     });
 
-    this.nextUserId = 3;
-    this.nextProductId = 2;
+    this.products.set(2, {
+      id: 2,
+      name: "Nitro V5",
+      description: "Gaming laptop with high end specs",
+      price: 5350.0,
+      stockQuantity: 6,
+    });
+
+    this.nextUserId = 5;
+    this.nextProductId = 3;
     this.nextOrderId = 1;
     this.nextOrderItemId = 1;
   }
